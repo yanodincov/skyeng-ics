@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/yanodincov/skyeng-ics/pkg/exec"
-	"github.com/yanodincov/skyeng-ics/pkg/executor"
+	"github.com/yanodincov/skyeng-ics/pkg/exec/job"
 
 	"github.com/pkg/errors"
 	"github.com/valyala/fasthttp"
 	"github.com/yanodincov/skyeng-ics/internal/config"
 	"github.com/yanodincov/skyeng-ics/internal/service/calendar"
+	"github.com/yanodincov/skyeng-ics/pkg/exec"
 )
 
 const port = 8080
@@ -22,20 +22,20 @@ type Service struct {
 	cfg             *config.Config
 	calendarService *calendar.Service
 	log             *slog.Logger
-	jobExecutor     *executor.JobExecutor
+	runner          *job.Runner
 }
 
 func NewService(
 	cfg *config.Config,
 	calendarService *calendar.Service,
 	log *slog.Logger,
-	jobExecutor *executor.JobExecutor,
+	runner *job.Runner,
 ) *Service {
 	service := &Service{
 		cfg:             cfg,
 		calendarService: calendarService,
 		log:             log,
-		jobExecutor:     jobExecutor,
+		runner:          runner,
 	}
 	service.onStart()
 
@@ -45,7 +45,7 @@ func NewService(
 func (s *Service) onStart() {
 	server := s.createServer()
 
-	s.jobExecutor.AddJob(executor.Job{ //nolint:exhaustruct
+	s.runner.AddJob(job.Job{ //nolint:exhaustruct
 		Name: "start api server",
 		Fn: func(_ context.Context) error {
 			if err := server.ListenAndServe(":" + strconv.Itoa(port)); err != nil &&
@@ -60,7 +60,7 @@ func (s *Service) onStart() {
 				return errors.Wrap(server.Shutdown(), "failed to shutdown server")
 			})
 		},
-		Config: executor.ProcessConfig{},
+		Config: job.ProcessConfig{},
 	})
 
 	s.log.Info("starting server",

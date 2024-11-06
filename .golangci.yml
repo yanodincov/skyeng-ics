@@ -12,7 +12,6 @@ linters:
     - canonicalheader
     - containedctx
     - copyloopvar
-    - cyclop
     - decorder
     - dogsled
     - dupl

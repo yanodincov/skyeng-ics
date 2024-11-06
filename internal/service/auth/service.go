@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yanodincov/skyeng-ics/pkg/executor"
+	"github.com/yanodincov/skyeng-ics/pkg/exec/job"
 
 	"github.com/pkg/errors"
 	"github.com/yanodincov/skyeng-ics/internal/config"
@@ -23,7 +23,7 @@ type Service struct {
 	cfg          *config.Config
 	repository   *skyeng.Repository
 	metaProvider *meta.Provider
-	jobExecutor  *executor.JobExecutor
+	runner       *job.Runner
 
 	spec skyeng.GetScheduleSpec
 	mx   sync.RWMutex
@@ -33,13 +33,13 @@ func NewService(
 	cfg *config.Config,
 	repository *skyeng.Repository,
 	metaProvider *meta.Provider,
-	jobExecutor *executor.JobExecutor,
+	runner *job.Runner,
 ) *Service {
 	service := &Service{ //nolint:exhaustruct
 		cfg:          cfg,
 		repository:   repository,
 		metaProvider: metaProvider,
-		jobExecutor:  jobExecutor,
+		runner:       runner,
 	}
 	service.onStart()
 
@@ -54,7 +54,7 @@ func (s *Service) GetAuthorizedGetScheduleSpec(_ context.Context) skyeng.GetSche
 }
 
 func (s *Service) onStart() {
-	s.jobExecutor.AddJob(executor.Job{ //nolint:exhaustruct
+	s.runner.AddJob(job.Job{ //nolint:exhaustruct
 		Name: "refresh auth cookies",
 		Fn: func(ctx context.Context) error {
 			spec, err := s.generateGetScheduleSpec(ctx)
@@ -68,7 +68,7 @@ func (s *Service) onStart() {
 
 			return nil
 		},
-		Config: executor.IntervalConfig{
+		Config: job.IntervalConfig{
 			Interval: authCookiesInterval,
 			Retries:  authRetry,
 			Timeout:  authTimeout,

@@ -11,9 +11,10 @@ import (
 const minRefreshInterval = time.Second * 30
 
 type Config struct {
-	Skyeng SkyengConfig
-	API    APIConfig
-	Worker WorkerConfig
+	Skyeng   SkyengConfig
+	API      APIConfig
+	Calendar CalendarConfig
+	Worker   WorkerConfig
 }
 
 type SkyengConfig struct {
@@ -27,6 +28,10 @@ type WorkerConfig struct {
 
 type APIConfig struct {
 	RouteSuffix string `envconfig:"API_ROUTE_SUFFIX"`
+}
+
+type CalendarConfig struct {
+	NotifyTimeList DurationList `envconfig:"LESSON_NOTIFY_TIME_LIST"`
 }
 
 var ErrEmptySkyengCredentials = errors.New("empty skyeng credentials")

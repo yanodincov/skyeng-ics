@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/yanodincov/skyeng-ics/pkg/executor"
+	"github.com/yanodincov/skyeng-ics/pkg/exec/job"
 
 	"github.com/pkg/errors"
 	"github.com/yanodincov/skyeng-ics/internal/api"
@@ -38,15 +38,15 @@ func run(ctx context.Context, log *slog.Logger) error {
 		return errors.Wrap(err, "failed to parse config")
 	}
 
-	jobExecutor := executor.NewJobExecutor(log)
+	runner := job.NewRunner(log)
 	metaProvider := meta.NewProvider()
 	skyengRepository := skyeng.NewRepository(&cfg.Skyeng)
-	authService := auth.NewService(cfg, skyengRepository, metaProvider, jobExecutor)
-	calendarFactory := factory.NewFactory()
-	calendarService := calendar.NewService(cfg, skyengRepository, authService, calendarFactory, jobExecutor)
-	_ = api.NewService(cfg, calendarService, log, jobExecutor)
+	authService := auth.NewService(cfg, skyengRepository, metaProvider, runner)
+	calendarFactory := factory.NewFactory(cfg)
+	calendarService := calendar.NewService(cfg, skyengRepository, authService, calendarFactory, runner)
+	_ = api.NewService(cfg, calendarService, log, runner)
 
-	if err = jobExecutor.Run(ctx); err != nil {
+	if err = runner.Run(ctx); err != nil {
 		return errors.Wrap(err, "failed to run job executor")
 	}
 

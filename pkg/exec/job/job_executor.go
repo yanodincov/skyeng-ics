@@ -1,4 +1,4 @@
-package executor
+package job
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const defaultOnStopTimeout = 5 * time.Second
+
 type Job struct {
 	Config        ExecuteConfig
 	Fn            func(ctx context.Context) error
@@ -17,36 +19,36 @@ type Job struct {
 	OnStopTimeout time.Duration
 }
 
-type JobExecutor struct {
+type Runner struct {
 	logger *slog.Logger
 
-	jobQueue []Job
+	queue []Job
 }
 
-func NewJobExecutor(logger *slog.Logger) *JobExecutor {
-	return &JobExecutor{
-		logger:   logger,
-		jobQueue: []Job{},
+func NewRunner(logger *slog.Logger) *Runner {
+	return &Runner{
+		logger: logger,
+		queue:  []Job{},
 	}
 }
 
-func (e *JobExecutor) AddJob(job Job) {
-	e.jobQueue = append(e.jobQueue, job)
+func (r *Runner) AddJob(job Job) {
+	r.queue = append(r.queue, job)
 }
 
 var ErrInvalidJobConfig = errors.New("invalid job config")
 
-func (e *JobExecutor) Run(ctx context.Context) error {
+func (r *Runner) Run(ctx context.Context) error {
 	eg, egCtx := errgroup.WithContext(ctx)
 
-	for _, job := range e.jobQueue {
+	for _, job := range r.queue {
 		switch cfg := job.Config.(type) {
 		case IntervalConfig:
-			if err := e.runIntervalFn(egCtx, eg, job, cfg); err != nil {
+			if err := r.runIntervalFn(egCtx, eg, job, cfg); err != nil {
 				return errors.Wrap(err, "failed to run interval job")
 			}
 		case ProcessConfig:
-			e.runProcessFn(egCtx, eg, job)
+			r.runProcessFn(egCtx, eg, job)
 		default:
 			return ErrInvalidJobConfig
 		}
@@ -55,13 +57,13 @@ func (e *JobExecutor) Run(ctx context.Context) error {
 	return eg.Wait()
 }
 
-func (e *JobExecutor) execStopFn(ctx context.Context, job Job) {
+func (r *Runner) execStopFn(ctx context.Context, job Job) {
 	if job.CloseFn != nil {
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), job.OnStopTimeout)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), max(job.OnStopTimeout, defaultOnStopTimeout))
 		defer cancel()
 
 		if err := job.CloseFn(ctx); err != nil {
-			e.logger.Error("failed to execute on stop function",
+			r.logger.Error("failed to execute on stop function",
 				slog.String("job", job.Name),
 				slog.String("error", err.Error()),
 			)

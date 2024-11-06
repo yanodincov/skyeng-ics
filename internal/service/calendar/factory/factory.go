@@ -4,16 +4,23 @@ import (
 	"context"
 	"time"
 
+	"github.com/yanodincov/skyeng-ics/internal/config"
+	ics2 "github.com/yanodincov/skyeng-ics/pkg/ics"
+
 	ics "github.com/arran4/golang-ical"
 	"github.com/yanodincov/skyeng-ics/internal/repository/skyeng/model"
 )
 
 const EventPrefix = "[Skyeng] "
 
-type Factory struct{}
+type Factory struct {
+	cfg *config.Config
+}
 
-func NewFactory() *Factory {
-	return &Factory{}
+func NewFactory(cfg *config.Config) *Factory {
+	return &Factory{
+		cfg: cfg,
+	}
 }
 
 func (f *Factory) CreateCalendarFromLessons(_ context.Context, lessons []model.Lesson) (*ics.Calendar, error) {
@@ -36,7 +43,15 @@ func (f *Factory) CreateCalendarFromLessons(_ context.Context, lessons []model.L
 		event.SetLocation("skyeng.com")
 		event.SetDescription(lesson.EducationService.Title + " - " + lesson.Teacher.Name)
 		event.SetURL("https://skyeng.ru")
-		event.SetOrganizer("Skyeng", ics.WithCN("Skyeng ICS"))
+		event.SetOrganizer("Skyeng", ics.WithCN("Skyeng ICS Maker"))
+
+		for _, notifyTimeDur := range f.cfg.Calendar.NotifyTimeList.Vals() {
+			alarm := event.AddAlarm()
+			alarm.SetAction(ics.ActionDisplay)
+			alarm.SetDescription("Skyeng lesson reminder")
+			alarm.SetSummary("Skyeng lesson starts in " + notifyTimeDur.String())
+			alarm.SetTrigger(ics2.ConvertDurationToICS(notifyTimeDur))
+		}
 	}
 
 	return calendar, nil

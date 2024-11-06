@@ -1,4 +1,4 @@
-package executor
+package job
 
 import (
 	"context"
@@ -6,13 +6,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func (e *JobExecutor) runProcessFn(
+func (r *Runner) runProcessFn(
 	ctx context.Context,
 	eg *errgroup.Group,
 	job Job,
 ) {
 	eg.Go(func() error {
-		defer e.execStopFn(ctx, job)
+		defer r.execStopFn(ctx, job)
 
 		if err := job.Fn(ctx); err != nil {
 			return wrapNotCtxErr(ctx, err, "failed to execute worker function for job %s", job.Name)

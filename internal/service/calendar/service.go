@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yanodincov/skyeng-ics/pkg/executor"
+	"github.com/yanodincov/skyeng-ics/pkg/exec/job"
 
 	ics "github.com/arran4/golang-ical"
 	"github.com/pkg/errors"
@@ -25,7 +25,7 @@ type Service struct {
 	authService     *auth.Service
 	repository      *skyeng.Repository
 	calendarFactory *factory.Factory
-	jobExecutor     *executor.JobExecutor
+	runner          *job.Runner
 
 	calendar *ics.Calendar
 	mx       sync.RWMutex
@@ -36,14 +36,14 @@ func NewService(
 	repository *skyeng.Repository,
 	authService *auth.Service,
 	calendarFactory *factory.Factory,
-	jobExecutor *executor.JobExecutor,
+	runner *job.Runner,
 ) *Service {
 	service := &Service{ //nolint:exhaustruct
 		cfg:             cfg,
 		repository:      repository,
 		authService:     authService,
 		calendarFactory: calendarFactory,
-		jobExecutor:     jobExecutor,
+		runner:          runner,
 	}
 	service.onStart()
 
@@ -58,12 +58,12 @@ func (s *Service) GetCalendar(_ context.Context) (*ics.Calendar, error) {
 }
 
 func (s *Service) onStart() {
-	s.jobExecutor.AddJob(executor.Job{ //nolint:exhaustruct
+	s.runner.AddJob(job.Job{ //nolint:exhaustruct
 		Name: "refresh calendar",
 		Fn: func(ctx context.Context) error {
 			return s.refreshCalendar(ctx)
 		},
-		Config: executor.IntervalConfig{
+		Config: job.IntervalConfig{
 			Interval: s.cfg.Worker.RefreshInterval,
 			Timeout:  refreshTimeout,
 			Retries:  refreshRetries,
