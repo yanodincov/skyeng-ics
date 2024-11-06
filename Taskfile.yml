@@ -1,0 +1,62 @@
+# https://taskfile.dev/
+
+version: '3'
+
+vars:
+  PATH_BUILD: ./build
+  PATH_BIN_DEP: ./.build/bin
+
+  DEP_GOLANGCI_LINT_VERSION: v1.61.0
+  DEP_GOLANGCI_LINT: "./{{.PATH_BIN_DEP}}/golangci-lint"
+  DEP_GOLANGCI_LINT_URL: "github.com/golangci/golangci-lint/cmd/golangci-lint@{{.DEP_GOLANGCI_LINT_VERSION}}"
+
+  DEP_FIELDALIGMENT_VERSION: v0.26.0
+  DEP_FIELDALIGMENT: "./{{.PATH_BIN_DEP}}/fieldalignment"
+  DEP_FIELDALIGMENT_URL: "golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment@{{.DEP_FIELDALIGMENT_VERSION}}"
+
+  DEP_GOIMPORTS_VERSION: v0.26.0
+  DEP_GOIMPORTS: "./{{.PATH_BIN_DEP}}/goimports"
+  DEP_GOIMPORTS_URL: "golang.org/x/tools/cmd/goimports@{{.DEP_GOIMPORTS_VERSION}}"
+
+  DEP_TAGALIGN_VERSION: v1.3.4
+  DEP_TAGALIGN: "./{{.PATH_BIN_DEP}}/tagalign"
+  DEP_TAGALIGN_URL: "github.com/4meepo/tagalign/cmd/tagalign@{{.DEP_TAGALIGN_VERSION}}"
+tasks:
+  deps:
+    desc: Install dependencies
+    env:
+      GOBIN:
+        sh: "echo `pwd`/{{.PATH_BIN_DEP}}"
+    cmds:
+      - "go mod download"
+      - "go mod tidy"
+      - "go install {{.DEP_GOLANGCI_LINT_URL}}"
+      - "go install {{.DEP_FIELDALIGMENT_URL}}"
+      - "go install {{.DEP_GOIMPORTS_URL}}"
+      - "go install {{.DEP_TAGALIGN_URL}}"
+
+  fmt:
+    desc: Format code
+    cmds:
+      - "go fmt ./..."
+      - "{{.DEP_FIELDALIGMENT}} -fix ./..."
+      - "find . -name '*.go' | xargs {{ .DEP_GOIMPORTS }} -w"
+      - "{{.DEP_TAGALIGN}}  -fix -sort -order \"envconfig,default\" -strict ./..."
+
+  lint:
+    desc: Lint code
+    cmds:
+      - "{{.DEP_GOLANGCI_LINT}} run ./..."
+      - "{{.DEP_FIELDALIGMENT}} ./..."
+
+  build:
+    desc: Build the project
+    cmds:
+      - "go build -o {{.PATH_BUILD}}/app ./cmd/app/main.go"
+
+  run:
+    desc: Run the project
+    cmds:
+      - "go run ./cmd/app/main.go"
+    sources:
+      - .env
