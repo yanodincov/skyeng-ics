@@ -13,6 +13,8 @@ import (
 	"github.com/yanodincov/skyeng-ics/pkg/worker"
 )
 
+const port = 8080
+
 type Service struct {
 	cfg             *config.Config
 	calendarService *calendar.Service
@@ -58,9 +60,12 @@ func (s *Service) Run(shutdowner worker.IShutdowner) error {
 		s.log.Info("server stopped")
 	}()
 
-	s.log.Info("starting server", slog.Int("port", s.cfg.API.Port))
+	s.log.Info("starting server",
+		slog.Int("port", port),
+		slog.String("route", route),
+	)
 
-	if err := server.ListenAndServe(":" + strconv.Itoa(s.cfg.API.Port)); err != nil &&
+	if err := server.ListenAndServe(":" + strconv.Itoa(port)); err != nil &&
 		!errors.Is(err, http.ErrServerClosed) {
 		return errors.Wrap(err, "failed to start server")
 	}

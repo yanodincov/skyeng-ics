@@ -12,8 +12,8 @@ const minRefreshInterval = time.Second * 30
 
 type Config struct {
 	Skyeng SkyengConfig
-	Worker WorkerConfig
 	API    APIConfig
+	Worker WorkerConfig
 }
 
 type SkyengConfig struct {
@@ -26,8 +26,7 @@ type WorkerConfig struct {
 }
 
 type APIConfig struct {
-	Port        int    `envconfig:"API_PORT" default:"8080"`
-	RouteSuffix string `envconfig:"API_ROUTE_SUFFIX" `
+	RouteSuffix string `envconfig:"API_ROUTE_SUFFIX"`
 }
 
 func ParseConfig() (*Config, error) {
