@@ -61,7 +61,7 @@ func (r *Runner) executeIntervalJob(ctx context.Context, job Job, cfg IntervalCo
 
 	r.logger.Info("job executed",
 		slog.String("job", job.Name),
-		slog.Duration("duration", time.Since(start)),
+		slog.String("duration", time.Since(start).String()),
 	)
 
 	return nil
