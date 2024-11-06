@@ -29,6 +29,8 @@ type APIConfig struct {
 	RouteSuffix string `envconfig:"API_ROUTE_SUFFIX"`
 }
 
+var ErrEmptySkyengCredentials = errors.New("empty skyeng credentials")
+
 func ParseConfig() (*Config, error) {
 	var cfg Config
 	if err := envconfig.Process("", &cfg); err != nil {
@@ -36,6 +38,9 @@ func ParseConfig() (*Config, error) {
 	}
 
 	cfg.Worker.RefreshInterval = max(cfg.Worker.RefreshInterval, minRefreshInterval)
+	if cfg.Skyeng.Login == "" || cfg.Skyeng.Password == "" {
+		return nil, ErrEmptySkyengCredentials
+	}
 
 	return &cfg, nil
 }

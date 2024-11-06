@@ -73,6 +73,6 @@ tasks:
   run:
     desc: Run the project
     cmds:
-      - "go run ./cmd/app/main.go"
-    sources:
+      - "go run ./cmd/main.go"
+    dotenv:
       - .env

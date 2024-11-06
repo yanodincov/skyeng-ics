@@ -45,11 +45,10 @@ func (r *Repository) Login(ctx context.Context, spec LoginSpec) (*LoginData, err
 	}
 
 	httpRes, err := r.client.Do(req)
-	defer httpRes.Body.Close() //nolint:govet,staticcheck
-
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send request")
 	}
+	defer httpRes.Body.Close()
 
 	if httpRes.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("unexpected status code: %d", httpRes.StatusCode)

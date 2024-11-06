@@ -44,11 +44,10 @@ func (r *Repository) GetSchedule(ctx context.Context, spec GetScheduleSpec) (*Ge
 	}
 
 	httpRes, err := r.client.Do(httpReq)
-	defer httpRes.Body.Close() //nolint:govet,staticcheck
-
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send request")
 	}
+	defer httpRes.Body.Close()
 
 	if httpRes.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("unexpected status code: %d", httpRes.StatusCode)
