@@ -32,11 +32,7 @@ Run the server:
 docker run -p 8080:8080 --env-file ./.env skyeng-ics-maker
 ```
 
-Run the server and subscribe your calendar to the following endpoint:
-
-```http
-localhost/$(ROUTE_SUFFIX)/calendar.ics
-```
+Run the server and subscribe your calendar to the `$(SERVER_URL)/$(ROUTE_SUFFIX)/calendar.ics` link.
 
 ## Development
 
