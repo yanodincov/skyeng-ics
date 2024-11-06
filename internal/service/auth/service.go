@@ -5,11 +5,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/yanodincov/skyeng-ics/pkg/executor"
+
 	"github.com/pkg/errors"
 	"github.com/yanodincov/skyeng-ics/internal/config"
 	"github.com/yanodincov/skyeng-ics/internal/repository/skyeng"
 	"github.com/yanodincov/skyeng-ics/internal/repository/skyeng/meta"
-	"github.com/yanodincov/skyeng-ics/pkg/worker"
 )
 
 const (
@@ -22,20 +23,27 @@ type Service struct {
 	cfg          *config.Config
 	repository   *skyeng.Repository
 	metaProvider *meta.Provider
-	spec         skyeng.GetScheduleSpec
-	mx           sync.RWMutex
+	jobExecutor  *executor.JobExecutor
+
+	spec skyeng.GetScheduleSpec
+	mx   sync.RWMutex
 }
 
 func NewService(
 	cfg *config.Config,
 	repository *skyeng.Repository,
 	metaProvider *meta.Provider,
+	jobExecutor *executor.JobExecutor,
 ) *Service {
-	return &Service{ //nolint:exhaustruct
+	service := &Service{ //nolint:exhaustruct
 		cfg:          cfg,
 		repository:   repository,
 		metaProvider: metaProvider,
+		jobExecutor:  jobExecutor,
 	}
+	service.onStart()
+
+	return service
 }
 
 func (s *Service) GetAuthorizedGetScheduleSpec(_ context.Context) skyeng.GetScheduleSpec {
@@ -45,9 +53,10 @@ func (s *Service) GetAuthorizedGetScheduleSpec(_ context.Context) skyeng.GetSche
 	return s.spec
 }
 
-func (s *Service) Run(sd worker.IShutdowner) error {
-	return worker.RunWorker(sd, authCookiesInterval, //nolint:wrapcheck
-		func(ctx context.Context) error {
+func (s *Service) onStart() {
+	s.jobExecutor.AddJob(executor.Job{ //nolint:exhaustruct
+		Name: "refresh auth cookies",
+		Fn: func(ctx context.Context) error {
 			spec, err := s.generateGetScheduleSpec(ctx)
 			if err != nil {
 				return errors.Wrap(err, "failed to generate get schedule spec")
@@ -59,10 +68,12 @@ func (s *Service) Run(sd worker.IShutdowner) error {
 
 			return nil
 		},
-		worker.WithExecRetries(authRetry),
-		worker.WithExecTimeout(authTimeout),
-		worker.WithAsyncErrWrap("failed to run auth service"),
-	)
+		Config: executor.IntervalConfig{
+			Interval: authCookiesInterval,
+			Retries:  authRetry,
+			Timeout:  authTimeout,
+		},
+	})
 }
 
 func (s *Service) generateGetScheduleSpec(ctx context.Context) (*skyeng.GetScheduleSpec, error) {

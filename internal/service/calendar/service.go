@@ -5,13 +5,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/yanodincov/skyeng-ics/pkg/executor"
+
 	ics "github.com/arran4/golang-ical"
 	"github.com/pkg/errors"
 	"github.com/yanodincov/skyeng-ics/internal/config"
 	"github.com/yanodincov/skyeng-ics/internal/repository/skyeng"
 	"github.com/yanodincov/skyeng-ics/internal/service/auth"
 	"github.com/yanodincov/skyeng-ics/internal/service/calendar/factory"
-	"github.com/yanodincov/skyeng-ics/pkg/worker"
 )
 
 const (
@@ -24,8 +25,10 @@ type Service struct {
 	authService     *auth.Service
 	repository      *skyeng.Repository
 	calendarFactory *factory.Factory
-	calendar        *ics.Calendar
-	mx              sync.RWMutex
+	jobExecutor     *executor.JobExecutor
+
+	calendar *ics.Calendar
+	mx       sync.RWMutex
 }
 
 func NewService(
@@ -33,13 +36,18 @@ func NewService(
 	repository *skyeng.Repository,
 	authService *auth.Service,
 	calendarFactory *factory.Factory,
+	jobExecutor *executor.JobExecutor,
 ) *Service {
-	return &Service{ //nolint:exhaustruct
+	service := &Service{ //nolint:exhaustruct
 		cfg:             cfg,
 		repository:      repository,
 		authService:     authService,
 		calendarFactory: calendarFactory,
+		jobExecutor:     jobExecutor,
 	}
+	service.onStart()
+
+	return service
 }
 
 func (s *Service) GetCalendar(_ context.Context) (*ics.Calendar, error) {
@@ -49,15 +57,18 @@ func (s *Service) GetCalendar(_ context.Context) (*ics.Calendar, error) {
 	return s.calendar, nil
 }
 
-func (s *Service) Run(sd worker.IShutdowner) error {
-	return worker.RunWorker( //nolint:wrapcheck
-		sd,
-		s.cfg.Worker.RefreshInterval,
-		s.refreshCalendar,
-		worker.WithExecTimeout(refreshTimeout),
-		worker.WithExecRetries(refreshRetries),
-		worker.WithAsyncErrWrap("failed to run calendar service"),
-	)
+func (s *Service) onStart() {
+	s.jobExecutor.AddJob(executor.Job{ //nolint:exhaustruct
+		Name: "refresh calendar",
+		Fn: func(ctx context.Context) error {
+			return s.refreshCalendar(ctx)
+		},
+		Config: executor.IntervalConfig{
+			Interval: s.cfg.Worker.RefreshInterval,
+			Timeout:  refreshTimeout,
+			Retries:  refreshRetries,
+		},
+	})
 }
 
 func (s *Service) refreshCalendar(ctx context.Context) error {

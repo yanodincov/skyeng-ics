@@ -39,8 +39,24 @@ tasks:
     desc: Format code
     cmds:
       - "go fmt ./..."
-      - "{{.DEP_FIELDALIGMENT}} -fix ./..."
+      - task: fmt:fieldalignment
+      - task: fmt:imports
+      - task: fmt:tagalign
+
+  fmt:fieldalignment:
+    desc: Format code with fieldalignment
+    cmds:
+      - >
+        {{.DEP_FIELDALIGMENT}} -fix ./... || ([ "$?" -eq 3 ] && echo "fieldalignment applied fixes with exit code 3" || exit 1)    
+
+  fmt:imports:
+    desc: Format code with goimports
+    cmds:
       - "find . -name '*.go' | xargs {{ .DEP_GOIMPORTS }} -w"
+
+  fmt:tagalign:
+    desc: Format code with tagalign
+    cmds:
       - "{{.DEP_TAGALIGN}}  -fix -sort -order \"envconfig,default\" -strict ./..."
 
   lint:

@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/yanodincov/skyeng-ics/pkg/executor"
+
 	"github.com/pkg/errors"
 	"github.com/yanodincov/skyeng-ics/internal/api"
 	"github.com/yanodincov/skyeng-ics/internal/config"
@@ -14,7 +16,6 @@ import (
 	"github.com/yanodincov/skyeng-ics/internal/service/auth"
 	"github.com/yanodincov/skyeng-ics/internal/service/calendar"
 	"github.com/yanodincov/skyeng-ics/internal/service/calendar/factory"
-	"github.com/yanodincov/skyeng-ics/pkg/worker"
 )
 
 func main() {
@@ -37,35 +38,17 @@ func run(ctx context.Context, log *slog.Logger) error {
 		return errors.Wrap(err, "failed to parse config")
 	}
 
-	shutdowner := worker.NewShutdowner(ctx, log)
-	defer shutdowner.Stop()
-
+	jobExecutor := executor.NewJobExecutor(log)
 	metaProvider := meta.NewProvider()
 	skyengRepository := skyeng.NewRepository(&cfg.Skyeng)
-
-	authService := auth.NewService(cfg, skyengRepository, metaProvider)
-	if err := authService.Run(shutdowner); err != nil {
-		return errors.Wrap(err, "failed to run auth service")
-	}
-
+	authService := auth.NewService(cfg, skyengRepository, metaProvider, jobExecutor)
 	calendarFactory := factory.NewFactory()
+	calendarService := calendar.NewService(cfg, skyengRepository, authService, calendarFactory, jobExecutor)
+	_ = api.NewService(cfg, calendarService, log, jobExecutor)
 
-	calendarService := calendar.NewService(
-		cfg,
-		skyengRepository,
-		authService,
-		calendarFactory,
-	)
-	if err = calendarService.Run(shutdowner); err != nil {
-		return errors.Wrap(err, "failed to run calendar service")
+	if err = jobExecutor.Run(ctx); err != nil {
+		return errors.Wrap(err, "failed to run job executor")
 	}
-
-	apiService := api.NewService(cfg, calendarService, log)
-	if err = apiService.Run(shutdowner); err != nil {
-		return errors.Wrap(err, "failed to run api service")
-	}
-
-	<-ctx.Done()
 
 	return nil
 }

@@ -118,4 +118,14 @@ linters-settings:
     ignore-names:
       - err
       - fn
-      -
+      - eg
+  wrapcheck:
+    ignoreSigs:
+      - .Wait(
+      - ctx.Err()
+      - Err
+      - errors.New(
+      - errors.Errorf(
+      - errors.Wrapf(
+      - errors.Wrap(
+      - fmt.Errorf(
