@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/yanodincov/skyeng-ics/pkg/mem"
+
 	"github.com/yanodincov/skyeng-ics/pkg/exec/job"
 
 	"github.com/pkg/errors"
@@ -101,5 +103,9 @@ func (s *Service) handlerGetCalendar(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	ctx.Success("text/calendar; charset=utf-8", []byte(icsCalendar.Serialize()))
+	serializedCalendar := []byte(icsCalendar.Serialize())
+	ctx.Success("text/calendar; charset=utf-8", serializedCalendar)
+	s.log.Info("successfully sent calendar",
+		slog.String("size", mem.GetHumanReadableSize(len(serializedCalendar))),
+	)
 }
